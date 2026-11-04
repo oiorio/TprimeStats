@@ -13,7 +13,7 @@ parser.add_argument("--addSyst",                action="store_true",            
 parser.add_argument("-s", "--suffix",           default="",                     help="Suffix for the output file name (e.g. histo2023_<suffix>.root)")
 opt = parser.parse_args()
 
-dorebin=False
+
 
 def SampleFiles(sample, era):
     from samples import sample_dict
@@ -24,6 +24,7 @@ def CollectHistos(inputEosFolder, outFolderPath, jsonInput, era, unblind=False, 
     inputEosFolder  = inputEosFolder.rstrip("/")
     outFolderPath   = outFolderPath.rstrip("/")
     lumi            = jsonInput["lumi_dict"][era]
+    rebinning       = jsonInput["rebinning"]
     outFilePath     = f"{outFolderPath}/histo{era}{f'_{suffix}' if suffix else ''}.root"
     var             = jsonInput["variable"]
     bins            = [(name, useRealData) for name, useRealData in jsonInput["categories"]]
@@ -53,7 +54,9 @@ def CollectHistos(inputEosFolder, outFolderPath, jsonInput, era, unblind=False, 
 
     os.makedirs(outFolderPath, exist_ok=True)
     output              = ROOT.TFile(outFilePath, "RECREATE")
-    xbins               = array("d", [500, 600, 700, 800, 1000, 1400, 2000])
+    doRebin=len(rebinning)
+    if(doRebin):    
+        xbins               = array("d", rebinning)
     nominalHistos       = {}
     componentIntegrals  = {}
     summaryInfo         = {}
@@ -77,7 +80,7 @@ def CollectHistos(inputEosFolder, outFolderPath, jsonInput, era, unblind=False, 
                     tmp.SetDirectory(0)
                     inputFile.Close()
                     tmp.Scale(lumi)
-                    if(dorebin):tmp                         = tmp.Rebin(len(xbins)-1, f"{outputName}_rebin{i}", xbins)
+                    if(doRebin):tmp                         = tmp.Rebin(len(xbins)-1, f"{outputName}_rebin{i}", xbins)
                     tmp.SetDirectory(0)
                     componentIntegrals[outputName].append((f, tmp.Integral()))
                     
@@ -112,7 +115,7 @@ def CollectHistos(inputEosFolder, outFolderPath, jsonInput, era, unblind=False, 
                 tmp = tmp.Clone(f"{outputName}_source{i}")
                 tmp.SetDirectory(0)
                 input.Close()
-                if(dorebin):tmp = tmp.Rebin(len(xbins)-1, f"{outputName}_rebin{i}", xbins)
+                if(doRebin):tmp = tmp.Rebin(len(xbins)-1, f"{outputName}_rebin{i}", xbins)
                 tmp.SetDirectory(0)
                 componentIntegrals[outputName].append((f, tmp.Integral()))
                 if h_out is None: h_out = tmp.Clone(outputName); h_out.SetDirectory(0)
